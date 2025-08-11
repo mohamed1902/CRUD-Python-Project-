@@ -12,7 +12,7 @@ app = FastAPI()
 
 @app.get("/", tags=["Messeage"])
 def messeage():
-    return{"Messeage": "Welcome"}
+    return{"Messeage": "Welcome Users"}
 
 
 app.include_router(routeUser.router , prefix="/users")

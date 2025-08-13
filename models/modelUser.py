@@ -10,10 +10,12 @@ class User(Base):
     id = Column(Integer , primary_key=True , nullable=False)
     name = Column(String , nullable=False)
     age = Column(Integer , nullable=False)
+    email = Column(String , unique=True , nullable=False)
     time = Column(DateTime , default=datetime.utcnow)
 class request_user(BaseModel):
     name: str 
     age: int 
+    email: str
 
 class userOut(request_user):
     id: int 

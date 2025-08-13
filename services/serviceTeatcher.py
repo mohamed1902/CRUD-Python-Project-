@@ -1,34 +1,28 @@
 #Teatcher_Services
-from models.modelTeatcher import Teatcher , request_teatcher , teatcherOut
-from sqlalchemy.orm import session
+from models.modelTeatcher import TeatcherIn , TeatcherOut
 from datetime import datetime
+from bson import ObjectId
+from database.Connection import mongo
 
-def create_Teatcher(teatcher: request_teatcher , db:session):
-    new_teatcher =  Teatcher(name=teatcher.name , age=teatcher.age)
-    db.add(new_teatcher)
-    db.commit()
-    db.refresh(new_teatcher)
-    return teatcherOut(id=new_teatcher.id , name=new_teatcher.name , age=new_teatcher.age , time=new_teatcher.time)
+collection_teatcher = mongo.get_collection("teatcher")
 
-def get_teatchers(db: session):
-    users = db.query(Teatcher).all()
-    return[teatcherOut(id=u.id , name=u.name , age=u.age , time=u.time) for u in users]
+def create_Teatcher(teatcher: TeatcherIn) -> TeatcherOut:
+    teatcher_data = teatcher.dict()
+    teatcher_data["create_at"] = datetime.utcnow()
+    result = collection_teatcher.insert_one(teatcher_data)
+    new_teatcher = collection_teatcher.find_one({"_id": result.inserted_id})
+    return TeatcherOut(id=str(new_teatcher["_id"]), **{k: v for k,v in new_teatcher.items() if k != "_id"})
 
-def update_teatcher(id: int,teatcher: request_teatcher, db: session):
-    ex_teatcher = db.query(Teatcher).filter(Teatcher.id == id).first()
-    if not ex_teatcher:
-        return None
-    ex_teatcher.name = teatcher.name
-    ex_teatcher.age = teatcher.age
-    ex_teatcher.time = datetime.now()
-    db.commit()
-    db.refresh(ex_teatcher)
-    return  teatcherOut(id=ex_teatcher.id, name=ex_teatcher.name, age=ex_teatcher.age, time=ex_teatcher.time)
+def get_teatchers() -> list[TeatcherOut]:
+    return [TeatcherOut(id=str(u["_id"]), **{k: v for k, v in u.items() if k != "_id"})
+            for u in collection_teatcher.find()]
 
-def delete_teatcher(id: int, db: session):
-    teatcher = db.query(Teatcher).filter(Teatcher.id == id).first()
-    if not teatcher:
-        return None
-    db.delete(teatcher)
-    db.commit()
-    return teatcher
+def update_teatcher(teatcher_id:str , teatcher: TeatcherIn) -> TeatcherOut:
+    collection_teatcher.update_one({"_id": ObjectId(teatcher_id)}, {"$set":{**teatcher.dict() , "create_at": datetime.utcnow()}})
+    updatedTeatcher = collection_teatcher.find_one({"_id": ObjectId(teatcher_id)})
+    if updatedTeatcher:
+        return  TeatcherOut(id=str(updatedTeatcher["_id"]),**{k: v for k,v in updatedTeatcher.items() if k !="_id"})
+
+def delete_teatcher(teatcher_id: str) -> bool:
+    result = collection_teatcher.delete_one({"_id": ObjectId(teatcher_id)})
+    return result.deleted_count > 0
